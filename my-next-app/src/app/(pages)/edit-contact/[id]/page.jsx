@@ -1,21 +1,29 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from "react";
 import { Input, Button, Form, message, Spin } from "antd";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation"; // usePathname to get the current URL
 import { fetchAPI } from "@/utils/fetch";
-import { getParams } from '@/utils/urlparams';
- 
+import getParams from "@/utils/urlparams";
+
 const EditContact = () => {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start loading by default
   const [contact, setContact] = useState(null);
   const router = useRouter();
-  const arrayParams = getParams(window.location.pathname);
-  console.log(arrayParams);
-  const [mounted, setMounted] = useState(false);
+  const pathname = usePathname(); // Correct way to get pathname in Next.js 13+
+  const [id, setId] = useState(null);
 
   useEffect(() => {
+    // Extract ID from the URL path after the component mounts
+    const arrayParams = getParams(pathname);
+    if (arrayParams.length >= 3) {
+      setId(arrayParams[2]);
+    }
+  }, [pathname]); // Runs when pathname changes
+
+  useEffect(() => {
+    // Run fetchContactDetails once the ID is set
     const fetchContactDetails = async () => {
-      if (!id) return; // Don't fetch if no ID is provided
+      if (!id) return; // Wait until ID is available
       setLoading(true);
       try {
         const response = await fetchAPI(`/api/contacts/${id}`, "GET");
@@ -28,9 +36,10 @@ const EditContact = () => {
       }
     };
 
-    fetchContactDetails();
-  }, [id]);
-  if (!mounted) return null;
+    if (id) {
+      fetchContactDetails();
+    }
+  }, [id]); // Runs when `id` is available
 
   const handleSave = async (values) => {
     setLoading(true);

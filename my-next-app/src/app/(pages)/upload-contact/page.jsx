@@ -1,7 +1,7 @@
-"use client"
+"use client";
 import React, { useState, useEffect } from "react";
-import { Upload, Button, Table, Input, message, Spin, Popconfirm } from "antd";
-import { UploadOutlined, SearchOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Upload, Button, Table, Input, message, Spin, Modal, Form , Popconfirm } from "antd";
+import { UploadOutlined, SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import Link from "next/link"; // Next.js Link for redirection
 import { fetchAPI } from "@/utils/fetch";
 import { FETCH_CONTACTS, UPLOAD_CONTACTS } from "@/constants";
@@ -11,6 +11,8 @@ const UploadExcel = () => {
   const [contacts, setContacts] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 5 });
   const [search, setSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form] = Form.useForm();
 
   // Fetch contacts
   const fetchContacts = async (page = 1, limit = 5, searchQuery = "") => {
@@ -53,6 +55,30 @@ const UploadExcel = () => {
       setLoading(false);
     }
   };
+// Handle delete contact
+const handleDelete = async (contactId) => {
+  try {
+    await fetchAPI(`/api/contacts/${contactId}`, "DELETE");
+    message.success("Contact deleted successfully!");
+    fetchContacts(); // Fetch contacts again after deletion
+  } catch (error) {
+    message.error("Failed to delete contact.");
+    console.error("Error deleting contact:", error.message);
+  }
+};
+  // Handle adding a new contact
+  const handleAddContact = async (values) => {
+    try {
+      await fetchAPI(UPLOAD_CONTACTS, "POST", values);
+      message.success("Contact added successfully!");
+      setIsModalOpen(false); // Close modal
+      form.resetFields(); // Reset form
+      fetchContacts(); // Refresh contacts
+    } catch (error) {
+      message.error("Failed to add contact.");
+      console.error("Error adding contact:", error.message);
+    }
+  };
 
   // Handle search
   const handleSearch = (e) => {
@@ -66,17 +92,9 @@ const UploadExcel = () => {
     fetchContacts(pagination.current, pagination.pageSize, search);
   };
 
-  // Handle delete contact
-  const handleDelete = async (contactId) => {
-    try {
-      await fetchAPI(`/api/contacts/${contactId}`, "DELETE");
-      message.success("Contact deleted successfully!");
-      fetchContacts(); // Fetch contacts again after deletion
-    } catch (error) {
-      message.error("Failed to delete contact.");
-      console.error("Error deleting contact:", error.message);
-    }
-  };
+  useEffect(() => {
+    fetchContacts();
+  }, []);
 
   const columns = [
     {
@@ -121,6 +139,7 @@ const UploadExcel = () => {
       ),
     },
   ];
+
   const uploadProps = {
     beforeUpload: (file) => {
       const isExcel =
@@ -142,20 +161,32 @@ const UploadExcel = () => {
     },
   };
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
   return (
     <div className="flex flex-col items-center justify-center p-6 bg-gray-100 min-h-screen">
       <div className="w-full max-w-4xl p-4 bg-white shadow-lg rounded-lg">
-        <h2 className="text-2xl font-bold mb-6 text-center">Upload Contacts & View</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">
+          Upload Contacts & View
+        </h2>
 
-        <Upload {...uploadProps}>
-          <Button icon={<UploadOutlined />} loading={loading} className="w-full bg-blue-500 text-white hover:bg-blue-600 mb-6">
-            Upload Excel
+        <div className="flex justify-between mb-4">
+          <Upload {...uploadProps}>
+            <Button
+              icon={<UploadOutlined />}
+              loading={loading}
+              className="bg-blue-500 text-white hover:bg-blue-600"
+            >
+              Upload Excel
+            </Button>
+          </Upload>
+
+          <Button
+            icon={<PlusOutlined />}
+            className="bg-green-500 text-white hover:bg-green-600"
+            onClick={() => setIsModalOpen(true)}
+          >
+            Add Contact
           </Button>
-        </Upload>
+        </div>
 
         <Input
           prefix={<SearchOutlined />}
@@ -181,6 +212,50 @@ const UploadExcel = () => {
           />
         )}
       </div>
+
+      {/* Add Contact Modal */}
+      <Modal
+        title="Add New Contact"
+        visible={isModalOpen}
+        onCancel={() => setIsModalOpen(false)}
+        footer={null}
+      >
+        <Form form={form} layout="vertical" onFinish={handleAddContact}>
+          <Form.Item
+            label="Name"
+            name="name"
+            rules={[{ required: true, message: "Please enter a name!" }]}
+          >
+            <Input placeholder="Enter name" />
+          </Form.Item>
+
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              { required: true, message: "Please enter an email!" },
+              { type: "email", message: "Enter a valid email!" },
+            ]}
+          >
+            <Input placeholder="Enter email" />
+          </Form.Item>
+
+          <Form.Item
+            label="Phone"
+            name="phone"
+            rules={[
+              { required: true, message: "Please enter a phone number!" },
+              { pattern: /^[0-9]{10}$/, message: "Enter a valid 10-digit phone number!" },
+            ]}
+          >
+            <Input placeholder="Enter phone number" />
+          </Form.Item>
+
+          <Button type="primary" htmlType="submit" className="w-full">
+            Add Contact
+          </Button>
+        </Form>
+      </Modal>
     </div>
   );
 };
